@@ -7,4 +7,4 @@ Building
 --------
 
 - `npm install -g dogescript`
-- `dogescript powder.djs`
+- `dogescript powder.djs > powder.js`
