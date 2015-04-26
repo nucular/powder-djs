@@ -1,4 +1,27 @@
+html, body {
+  font-family: monospace;
+  color: #fff;
+  background-color: #333;
+  
+  margin: 0px; padding: 0px;
+  height: 100%;
+}
+
+a {
+  color: #fff !important;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#stuff {
+  text-align: center;
+}
+
 #screen {
-    background-color: black;
-    color: white;
+  display: block;
+  background-color: black;
 }
