@@ -8,6 +8,7 @@ very NPARTS is XRES * YRES
 
 very pmap is []
 very parts is []
+very empty is []
 very types is {}
 
 very mouse is {}
@@ -96,12 +97,17 @@ such update much p
     rly r is false
         pmap[p.y][p.x] is null
         parts[p.id] is null
+        plz empty.push with p.id
     wow
 wow
 
 such spawn much type x y
     rly !pmap[y][x]
-        very id is parts.length + 1
+        rly empty.length
+          very id is plz empty.pop
+        but
+          very id is parts.length + 1
+        wow
         very p is new Particle with id x y type
         parts[id] is p
         pmap[y][x] is p
@@ -192,6 +198,7 @@ such frame
                     very p is pmap[mouse.y+y][mouse.x+x]
                     rly p
                         parts[p.id] is null
+                        plz empty.push with p.id
                         pmap[p.y][p.x] is null
                     wow
                 but

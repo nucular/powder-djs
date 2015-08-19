@@ -8,6 +8,7 @@ var NPARTS = XRES * YRES ;
 
 var pmap = [];
 var parts = [];
+var empty = [];
 var types = {};
 
 var mouse = {};
@@ -96,12 +97,17 @@ var r = displace(p, nx, ny);
 if (r  === false ) {
 pmap[p.y][p.x] = null 
 parts[p.id] = null 
+empty.push(p.id);
 } 
 } 
 
 function spawn (type, x, y) { 
 if (!pmap[y][x] ) {
+if (empty.length ) {
+var id = empty.pop();
+} else {
 var id = parts.length + 1 ;
+} 
 var p = new Particle(id, x, y, type);
 parts[id] = p 
 pmap[y][x] = p 
@@ -192,6 +198,7 @@ if (pentype  === types.NONE ) {
 var p = pmap[mouse.y+y][mouse.x+x];
 if (p ) {
 parts[p.id] = null 
+empty.push(p.id);
 pmap[p.y][p.x] = null 
 } 
 } else {
