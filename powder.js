@@ -27,6 +27,10 @@ this.color = color || "#000"
 
 this.state = state || SOLID 
 this.mass = mass || 1 
+
+this.init = null 
+this.update = null 
+this.flammable = false 
 } 
 
 function Particle (id, x, y, type) { 
@@ -34,19 +38,93 @@ this.id = id
 this.x = x 
 this.y = y 
 this.type = type 
+this.life = 0 
+this.ctype = null 
 } 
-
-types.NONE = new Type("NONE", "#FFF", SOLID, 0);
-types.DMND = new Type("DMND", "#CCFFFF", SOLID, 5);
-types.DUST = new Type("DUST", "#FFE0A0", POWDER, 2);
-types.GAS = new Type("GAS", "#E0FF20", GAS, 0);
-types.WATR = new Type("WATR", "#2030FF", LIQUID, 1.5);
 
 var pensize = 10;
 var pentype = types.NONE;
 
 var lastframe = undefined;
 var fps = undefined;
+
+types.NONE = new Type("NONE", "#FFF", SOLID, 0);
+types.DMND = new Type("DMND", "#CCFFFF", SOLID, 5);
+types.DUST = new Type("DUST", "#FFE0A0", POWDER, 2);
+types.GAS = new Type("GAS", "#E0FF20", GAS, 0);
+types.GAS.flammable = true 
+types.WATR = new Type("WATR", "#2030FF", LIQUID, 1.5);
+types.WTRV = new Type("WTRV", "#A0A0FF", GAS, 0);
+types.FIRE = new Type("FIRE", "#FF0000", GAS, -2);
+types.CLNE = new Type("CLNE", "#FFFF00", SOLID, 4);
+
+function wtrv_init (p) { 
+p.life = Math.random()*200+50 
+} 
+function wtrv_update (p) { 
+p.life = p.life - 1 
+if (p.life  <= 0 ) {
+p.type = types.WATR 
+} 
+return true;
+} 
+types.WTRV.update = wtrv_update 
+
+function fire_init (p) { 
+p.life = Math.random()*100+50 
+} 
+function fire_update (p) { 
+p.life = p.life - 1 
+if (p.life  <= 0 ) {
+despawn(p);
+        return false
+} 
+function c (p) { 
+if (p.type  === types.WATR ) {
+p.type = types.WTRV 
+p.life = Math.random()*200+50 
+} else if (p.type.flammable ) {
+p.type = types.FIRE 
+} 
+} 
+neighbours(p, c, 2);
+return true;
+} 
+types.FIRE.init = fire_init 
+types.FIRE.update = fire_update 
+
+function clne_update (p) { 
+var dx = -1;
+var dy = -1;
+for (dy; dy  <= 1; dy  += 1 ) {
+for (dx; dx  <= 1; dx  += 1 ) {
+var pn = pmap[p.y+dy][p.x+dx];
+if (pn ) {
+if (!p.ctype  && pn.type  !== types.CLNE ) {
+p.ctype = pn.type 
+} 
+} else {
+if (p.ctype ) {
+spawn(p.ctype, p.x+dx, p.y+dy);
+} 
+} 
+} 
+} 
+} 
+types.CLNE.update = clne_update 
+
+function neighbours (p, c, r) { 
+var dx = -r;
+var dy = -r;
+for (dy; dy  <= r; dy  += 1 ) {
+for (dx; dx  <= r; dx  += 1 ) {
+var pn = pmap[p.y+dy][p.x+dx];
+if (pn ) {
+c(pn);
+} 
+} 
+} 
+} 
 
 function displace (p, nx, ny) { 
 if (nx  < 0  || ny  < 0  || nx  >= XRES  || ny  >= YRES ) {
@@ -80,17 +158,26 @@ p.y = ny
 } 
 
 function update (p) { 
+if (p.type.update ) {
+var r = p.type.update(p);
+if (!r ) {
+            return
+} 
+} 
+
 var dx = 0;
 var dy = 0;
 if (p.type.state  === GAS ) {
 dx = Math.floor(Math.random()*3-1) 
-dy = Math.floor(Math.random()*3-1) 
+dy = Math.floor(Math.random()*p.type.mass*2-p.type.mass) 
 } else if (p.type.state  === LIQUID ) {
 dx = Math.floor(Math.random()*3-1) 
 dy = Math.floor(Math.random()*p.type.mass*2) 
 } else if (p.type.state  === POWDER ) {
 dx = Math.round(Math.random()*2-1) 
 dy = Math.floor(Math.random()*p.type.mass*2) 
+} else if (p.type.state  === SOLID ) {
+        return
 } 
 
 var nx = p.x+dx;
@@ -98,9 +185,7 @@ var ny = p.y+dy;
 
 var r = displace(p, nx, ny);
 if (r  === false ) {
-pmap[p.y][p.x] = null 
-parts[p.id] = null 
-empty.push(p.id);
+despawn(p);
 } 
 } 
 
@@ -111,9 +196,18 @@ if (id  === undefined ) {
 id = parts.length 
 } 
 var p = new Particle(id, x, y, type);
+if (p.type.init ) {
+p.type.init(p);
+} 
 parts[id] = p 
 pmap[y][x] = p 
 } 
+} 
+
+function despawn (p) { 
+pmap[p.y][p.x] = null 
+parts[p.id] = null 
+empty.push(p.id);
 } 
 
 function init () { 
@@ -173,7 +267,7 @@ if (p ) {
 pcount = pcount + 1 
 update(p);
 ctx.fillStyle = p.type.color 
-ctx.fillRect(p.x, p.y, 1.5, 1.5);
+ctx.fillRect(p.x, p.y, 1, 1);
 } 
 } 
 
@@ -209,17 +303,20 @@ x = x + 50
 } 
 
 if (mouse.down ) {
-for (y=-Math.ceil(pensize/2) ; y  < Math.floor(pensize/2) ; y  += 1 ) {
-for (x=-Math.ceil(pensize/2) ; x  < Math.floor(pensize/2) ; x  += 1 ) {
+for (dy=-Math.ceil(pensize/2) ; dy  < Math.floor(pensize/2) ; dy  += 1 ) {
+for (dx=-Math.ceil(pensize/2) ; dx  < Math.floor(pensize/2) ; dx  += 1 ) {
+var x = mouse.x+dx;
+var y = mouse.y+dy;
+var p = pmap[y][x];
+
 if (pentype  === types.NONE ) {
-var p = pmap[mouse.y+y][mouse.x+x];
 if (p ) {
-parts[p.id] = null 
-pmap[p.y][p.x] = null 
-empty.push(p.id);
+despawn(p);
 } 
+} else if (p ) {
+p.ctype = pentype 
 } else {
-spawn(pentype, mouse.x+x, mouse.y+y);
+spawn(pentype, x, y);
 } 
 } 
 } 

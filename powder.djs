@@ -27,6 +27,10 @@ such Type much name color state mass
 
     this.state is state || SOLID
     this.mass is mass || 1
+
+    this.init is null
+    this.update is null
+    this.flammable is false
 wow
 
 such Particle much id x y type
@@ -34,19 +38,91 @@ such Particle much id x y type
     this.x is x
     this.y is y
     this.type is type
+    this.life is 0
+    this.ctype is null
 wow
-
-types.NONE is new Type with "NONE" "#FFF" SOLID 0
-types.DMND is new Type with "DMND" "#CCFFFF" SOLID 5
-types.DUST is new Type with "DUST" "#FFE0A0" POWDER 2
-types.GAS is new Type with "GAS" "#E0FF20" GAS 0
-types.WATR is new Type with "WATR" "#2030FF" LIQUID 1.5
 
 very pensize is 10
 very pentype is types.NONE
 
 very lastframe
 very fps
+
+types.NONE is new Type with "NONE" "#FFF" SOLID 0
+types.DMND is new Type with "DMND" "#CCFFFF" SOLID 5
+types.DUST is new Type with "DUST" "#FFE0A0" POWDER 2
+types.GAS is new Type with "GAS" "#E0FF20" GAS 0
+types.GAS.flammable is true
+types.WATR is new Type with "WATR" "#2030FF" LIQUID 1.5
+types.WTRV is new Type with "WTRV" "#A0A0FF" GAS 0
+types.FIRE is new Type with "FIRE" "#FF0000" GAS -2
+types.CLNE is new Type with "CLNE" "#FFFF00" SOLID 4
+
+such wtrv_init much p
+    p.life is Math.random()*200+50
+wow
+such wtrv_update much p
+    p.life is p.life - 1
+    rly p.life smallerish 0
+        p.type is types.WATR
+    wow
+wow true
+types.WTRV.update is wtrv_update
+
+such fire_init much p
+    p.life is Math.random()*100+50
+wow
+such fire_update much p
+    p.life is p.life - 1
+    rly p.life smallerish 0
+        plz despawn with p
+        return false
+    wow
+    such c much p
+        rly p.type is types.WATR
+            p.type is types.WTRV
+            p.life is Math.random()*200+50
+        but rly p.type.flammable
+            p.type is types.FIRE
+        wow
+    wow
+    plz neighbours with p c 2
+wow true
+types.FIRE.init is fire_init
+types.FIRE.update is fire_update
+
+such clne_update much p
+    very dx is -1
+    very dy is -1
+    much dy; dy smallerish 1; dy more 1
+        much dx; dx smallerish 1; dx more 1
+            very pn is pmap[p.y+dy][p.x+dx]
+            rly pn
+                rly !p.ctype and pn.type not types.CLNE
+                    p.ctype is pn.type
+                wow
+            but
+                rly p.ctype
+                    plz spawn with p.ctype p.x+dx p.y+dy
+                wow
+            wow
+        wow
+    wow
+wow
+types.CLNE.update is clne_update
+
+such neighbours much p c r
+    very dx is -r
+    very dy is -r
+    much dy; dy smallerish r; dy more 1
+        much dx; dx smallerish r; dx more 1
+            very pn is pmap[p.y+dy][p.x+dx]
+            rly pn
+                plz c with pn
+            wow
+        wow
+    wow
+wow
 
 such displace much p nx ny
     rly nx smaller 0 or ny smaller 0 or nx biggerish XRES or ny biggerish YRES
@@ -80,17 +156,26 @@ such displace much p nx ny
 wow
 
 such update much p
+    rly p.type.update
+        very r is plz p.type.update with p
+        rly !r
+            return
+        wow
+    wow
+
     very dx is 0
     very dy is 0
     rly p.type.state is GAS
         dx is Math.floor(Math.random()*3-1)
-        dy is Math.floor(Math.random()*3-1)
+        dy is Math.floor(Math.random()*p.type.mass*2-p.type.mass)
     but rly p.type.state is LIQUID
         dx is Math.floor(Math.random()*3-1)
         dy is Math.floor(Math.random()*p.type.mass*2)
     but rly p.type.state is POWDER
         dx is Math.round(Math.random()*2-1)
         dy is Math.floor(Math.random()*p.type.mass*2)
+    but rly p.type.state is SOLID
+        return
     wow
 
     very nx is p.x+dx
@@ -98,9 +183,7 @@ such update much p
 
     very r is plz displace with p nx ny
     rly r is false
-        pmap[p.y][p.x] is null
-        parts[p.id] is null
-        plz empty.push with p.id
+        plz despawn with p
     wow
 wow
 
@@ -111,9 +194,18 @@ such spawn much type x y
           id is parts.length
         wow
         very p is new Particle with id x y type
+        rly p.type.init
+            plz p.type.init with p
+        wow
         parts[id] is p
         pmap[y][x] is p
     wow
+wow
+
+such despawn much p
+    pmap[p.y][p.x] is null
+    parts[p.id] is null
+    plz empty.push with p.id
 wow
 
 such init
@@ -173,7 +265,7 @@ such frame
             pcount is pcount + 1
             plz update with p
             ctx.fillStyle is p.type.color
-            ctx dose fillRect with p.x p.y 1.5 1.5
+            ctx dose fillRect with p.x p.y 1 1
         wow
     wow
 
@@ -209,17 +301,20 @@ such frame
     wow
 
     rly mouse.down
-        much y=-Math.ceil(pensize/2) next y smaller Math.floor(pensize/2) next y more 1
-            much x=-Math.ceil(pensize/2) next x smaller Math.floor(pensize/2) next x more 1
+        much dy=-Math.ceil(pensize/2) next dy smaller Math.floor(pensize/2) next dy more 1
+            much dx=-Math.ceil(pensize/2) next dx smaller Math.floor(pensize/2) next dx more 1
+                very x is mouse.x+dx
+                very y is mouse.y+dy
+                very p is pmap[y][x]
+
                 rly pentype is types.NONE
-                    very p is pmap[mouse.y+y][mouse.x+x]
                     rly p
-                        parts[p.id] is null
-                        pmap[p.y][p.x] is null
-                        plz empty.push with p.id
+                        plz despawn with p
                     wow
+                but rly p
+                    p.ctype is pentype
                 but
-                    plz spawn with pentype mouse.x+x mouse.y+y
+                    plz spawn with pentype x y
                 wow
             wow
         wow
