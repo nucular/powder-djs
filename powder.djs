@@ -45,6 +45,9 @@ types.WATR is new Type with "WATR" "#2030FF" LIQUID 1.5
 very pensize is 10
 very pentype is types.NONE
 
+very lastframe
+very fps
+
 such displace much p nx ny
     rly nx smaller 0 or ny smaller 0 or nx biggerish XRES or ny biggerish YRES
         return false
@@ -103,10 +106,9 @@ wow
 
 such spawn much type x y
     rly !pmap[y][x]
-        rly empty.length
-          very id is plz empty.pop
-        but
-          very id is parts.length + 1
+        very id is plz empty.pop
+        rly id is undefined
+          id is parts.length
         wow
         very p is new Particle with id x y type
         parts[id] is p
@@ -151,6 +153,16 @@ wow
 
 such frame
     plz requestAnimationFrame with frame
+
+    rly !lastframe
+      lastframe is plz Date.now
+      fps is 0
+    but
+      very delta is (new Date().getTime() - lastframe) / 1000
+      lastframe is plz Date.now
+      fps is 1 / delta
+    wow
+
     ctx dose clearRect with 0 0 XRES YRES
 
     very pcount is 0
@@ -168,8 +180,13 @@ such frame
     ctx.strokeStyle is "#fff"
     ctx.fillStyle is "#fff"
     ctx dose strokeRect with mouse.x-pensize/2 mouse.y-pensize/2 pensize pensize
-    ctx dose fillText with pcount.toString() 5 10
-    ctx dose fillText with parts.length.toString() 5 20
+
+    very pcount is pcount.toString() + " parts"
+    very palloc is parts.length.toString() + " alloc"
+    very pfps is Math.floor(fps).toString() + " fps"
+    ctx dose fillText with pcount 5 10
+    ctx dose fillText with palloc 5 20
+    ctx dose fillText with pfps 5 30
 
     very x is 5
     much i in types
@@ -198,8 +215,8 @@ such frame
                     very p is pmap[mouse.y+y][mouse.x+x]
                     rly p
                         parts[p.id] is null
-                        plz empty.push with p.id
                         pmap[p.y][p.x] is null
+                        plz empty.push with p.id
                     wow
                 but
                     plz spawn with pentype mouse.x+x mouse.y+y

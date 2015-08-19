@@ -45,6 +45,9 @@ types.WATR = new Type("WATR", "#2030FF", LIQUID, 1.5);
 var pensize = 10;
 var pentype = types.NONE;
 
+var lastframe = undefined;
+var fps = undefined;
+
 function displace (p, nx, ny) { 
 if (nx  < 0  || ny  < 0  || nx  >= XRES  || ny  >= YRES ) {
         return false
@@ -103,10 +106,9 @@ empty.push(p.id);
 
 function spawn (type, x, y) { 
 if (!pmap[y][x] ) {
-if (empty.length ) {
 var id = empty.pop();
-} else {
-var id = parts.length + 1 ;
+if (id  === undefined ) {
+id = parts.length 
 } 
 var p = new Particle(id, x, y, type);
 parts[id] = p 
@@ -151,6 +153,16 @@ requestAnimationFrame(frame);
 
 function frame () { 
 requestAnimationFrame(frame);
+
+if (!lastframe ) {
+lastframe = Date.now();
+fps = 0 
+} else {
+var delta = (new Date().getTime() - lastframe) / 1000 ;
+lastframe = Date.now();
+fps = 1 / delta 
+} 
+
 ctx.clearRect(0, 0, XRES, YRES);
 
 var pcount = 0;
@@ -168,8 +180,13 @@ ctx.fillRect(p.x, p.y, 1.5, 1.5);
 ctx.strokeStyle = "#fff" 
 ctx.fillStyle = "#fff" 
 ctx.strokeRect(mouse.x-pensize/2, mouse.y-pensize/2, pensize, pensize);
-ctx.fillText(pcount.toString(), 5, 10);
-ctx.fillText(parts.length.toString(), 5, 20);
+
+var pcount = pcount.toString() + " parts" ;
+var palloc = parts.length.toString() + " alloc" ;
+var pfps = Math.floor(fps).toString() + " fps" ;
+ctx.fillText(pcount, 5, 10);
+ctx.fillText(palloc, 5, 20);
+ctx.fillText(pfps, 5, 30);
 
 var x = 5;
 for (i in types ) {
@@ -198,8 +215,8 @@ if (pentype  === types.NONE ) {
 var p = pmap[mouse.y+y][mouse.x+x];
 if (p ) {
 parts[p.id] = null 
-empty.push(p.id);
 pmap[p.y][p.x] = null 
+empty.push(p.id);
 } 
 } else {
 spawn(pentype, mouse.x+x, mouse.y+y);
